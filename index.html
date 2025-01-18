@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Minimal Jump Game with Score</title>
+  <style>
+    /* Make canvas fill the window, center everything */
+    html, body { margin: 0; padding: 0; overflow: hidden; background: #eee; }
+    canvas { display: block; margin: auto; background: #eee; }
+  </style>
+</head>
+<body>
+<canvas id="game" width="480" height="200"></canvas>
+<script>
+  /*
+    Minimal Jump Game with Score
+    ----------------------------
+    - Press Space (or click/tap) to jump.
+    - Obstacles come from the right; jump over them.
+    - Score increases by 1 for each obstacle you fully pass.
+    - If you hit an obstacle, game over. Reload to retry.
+  */
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  // Game settings
+  let playerX = canvas.width / 4;   // character stays around middle-left
+  let playerY = canvas.height - 40; // starting Y
+  let playerSize = 20;              // size of the square character
+  let velocityY = 0;                // vertical velocity
+  let gravity = 0.6;                // gravity pulling the player down
+  let jumpStrength = 12;            // how strong the jump is
+
+  let obstacles = [];               // store obstacle objects
+  let obstacleSpeed = 3;            // how fast obstacles move
+  let spawnRate = 90;               // frames between new obstacles
+  let frameCount = 0;
+
+  let score = 0;                    // player's score
+  let gameOver = false;
+
+  // Listen for jump (space key, mouse/touch)
+  document.addEventListener("keydown", e => {
+    if (e.code === "Space") jump();
+  });
+  document.addEventListener("touchstart", jump);
+  document.addEventListener("mousedown", jump);
+
+  function jump() {
+    // Only allow jump if the player is "on the ground"
+    if (playerY >= canvas.height - playerSize) {
+      velocityY = -jumpStrength;
+    }
+  }
+
+  // Main game loop
+  function update() {
+    if (gameOver) return;
+
+    // Clear screen
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Update player
+    velocityY += gravity;
+    playerY += velocityY;
+    if (playerY > canvas.height - playerSize) {
+      playerY = canvas.height - playerSize;
+      velocityY = 0;
+    }
+
+    // Draw player
+    ctx.fillStyle = "blue";
+    ctx.fillRect(playerX, playerY, playerSize, playerSize);
+
+    // Spawn obstacles periodically
+    frameCount++;
+    if (frameCount % spawnRate === 0) {
+      let obstacleHeight = 20 + Math.random() * 20; // vary height
+      obstacles.push({
+        x: canvas.width,
+        y: canvas.height - obstacleHeight,
+        w: 20,
+        h: obstacleHeight,
+        counted: false // to track if we've already added to score
+      });
+    }
+
+    // Update obstacles and check collisions
+    for (let i = 0; i < obstacles.length; i++) {
+      let obs = obstacles[i];
+      obs.x -= obstacleSpeed;
+
+      // Draw obstacle
+      ctx.fillStyle = "red";
+      ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+
+      // Collision detection (axis-aligned bounding box)
+      if (
+              playerX < obs.x + obs.w &&
+              playerX + playerSize > obs.x &&
+              playerY < obs.y + obs.h &&
+              playerY + playerSize > obs.y
+      ) {
+        gameOver = true;
+        ctx.fillStyle = "black";
+        ctx.font = "20px sans-serif";
+        ctx.fillText("Game Over! Refresh to restart.", 100, 100);
+      }
+
+      // If the obstacle has moved behind the player and not counted yet, increment score
+      if (!obs.counted && obs.x + obs.w < playerX) {
+        obs.counted = true;
+        score++;
+      }
+    }
+
+    // Remove obstacles that are fully off-screen to the left
+    obstacles = obstacles.filter(obs => obs.x + obs.w > 0);
+
+    // Draw score
+    ctx.fillStyle = "black";
+    ctx.font = "16px sans-serif";
+    ctx.fillText("Score: " + score, 10, 20);
+
+    // Continue updating if not game over
+    if (!gameOver) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  // Start the game
+  update();
+</script>
+</body>
+</html>
